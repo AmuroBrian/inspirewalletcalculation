@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Real-time Earnings Counter (PHT synced)</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      label {
+        display: block;
+        margin-top: 10px;
+      }
+      input {
+        margin-left: 10px;
+      }
+      #realTimeResults {
+        max-height: 300px;
+        overflow-y: auto;
+        border: 1px solid #ccc;
+        padding: 10px;
+        margin-top: 10px;
+        font-family: monospace;
+        background: #f9f9f9;
+      }
+      #phtClock {
+        font-weight: bold;
+        font-size: 1.2em;
+        margin-bottom: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Deposit Money & Real-Time Earnings (Philippine Time)</h2>
+
+    <div id="phtClock">Loading Philippine Time...</div>
+
+    <form id="depositForm">
+      <label>
+        Current Money:
+        <input
+          type="number"
+          id="currentMoneyInput"
+          required
+          min="0"
+          step="0.01"
+        />
+      </label>
+      <label>
+        Deposit Amount:
+        <input type="number" id="amountInput" required min="0.01" step="0.01" />
+      </label>
+      <label>
+        Start Date:
+        <input type="date" id="dateInput" required />
+      </label>
+      <button type="submit" style="margin-top: 15px">
+        Start Earning Counter
+      </button>
+    </form>
+
+    <h3>Available Balance:</h3>
+    <p id="availableBalanceDisplay"></p>
+
+    <h3>Real-Time Earnings (per minute, synced to PHT clock):</h3>
+    <div id="realTimeResults"></div>
+
+    <script>
+      function getPHTNow() {
+        const now = new Date();
+        const options = {
+          timeZone: "Asia/Manila",
+          hour12: false,
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        };
+        const formatter = new Intl.DateTimeFormat("en-PH", options);
+        const parts = formatter.formatToParts(now);
+        let y, m, d, h, min, s;
+        for (const part of parts) {
+          if (part.type === "year") y = part.value;
+          if (part.type === "month") m = part.value;
+          if (part.type === "day") d = part.value;
+          if (part.type === "hour") h = part.value;
+          if (part.type === "minute") min = part.value;
+          if (part.type === "second") s = part.value;
+        }
+        return new Date(`${y}-${m}-${d}T${h}:${min}:${s}`);
+      }
+
+      function updatePHTClock() {
+        const nowPHT = getPHTNow();
+        document.getElementById(
+          "phtClock"
+        ).textContent = `Philippine Time: ${nowPHT.toLocaleTimeString("en-PH", {
+          timeZone: "Asia/Manila",
+        })}`;
+      }
+
+      setInterval(updatePHTClock, 1000);
+      updatePHTClock();
+
+      document
+        .getElementById("depositForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          const currentMoney = parseFloat(
+            document.getElementById("currentMoneyInput").value
+          );
+          const amount = parseFloat(
+            document.getElementById("amountInput").value
+          );
+          const dateStr = document.getElementById("dateInput").value;
+
+          const balanceDisplay = document.getElementById(
+            "availableBalanceDisplay"
+          );
+          const realTimeResults = document.getElementById("realTimeResults");
+
+          balanceDisplay.textContent = "";
+          realTimeResults.innerHTML = "";
+
+          if (amount > currentMoney) {
+            alert(
+              "Deposit amount cannot be more than the money you currently have."
+            );
+            return;
+          }
+
+          let response;
+          try {
+            response = await fetch("/generate-dates", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ currentMoney, amount }),
+            });
+          } catch (err) {
+            alert("Failed to connect to server.");
+            return;
+          }
+
+          if (!response.ok) {
+            const error = await response.json();
+            alert(`Server error: ${error.error}`);
+            return;
+          }
+
+          const { availableBalance, interestRate } = await response.json();
+
+          const totalMinutes = 262080; // ~6 months
+          const ratePerPeriod = interestRate / 100;
+          const ratePerMinute =
+            Math.pow(1 + ratePerPeriod, 1 / totalMinutes) - 1;
+
+          let startDate = getPHTNow();
+          let totalEarned = 0;
+          let previousAmount = amount;
+          let lastTransferMinute = 0;
+
+          function addLog(message) {
+            const div = document.createElement("div");
+            div.textContent = message;
+            realTimeResults.appendChild(div);
+            realTimeResults.scrollTop = realTimeResults.scrollHeight;
+          }
+
+          function updateEarnings() {
+            const now = getPHTNow();
+            const elapsedMinutes = Math.floor(
+              (now.getTime() - startDate.getTime()) / 60000
+            );
+            if (elapsedMinutes < 1) return;
+
+            const currentAmount =
+              amount * Math.pow(1 + ratePerMinute, elapsedMinutes);
+            const earnedThisMinute = currentAmount - previousAmount;
+            totalEarned += earnedThisMinute;
+            previousAmount = currentAmount;
+
+            addLog(
+              `Minute ${elapsedMinutes}: ${now.toLocaleString("en-PH", {
+                timeZone: "Asia/Manila",
+              })} — Earned this minute: ₱${earnedThisMinute.toFixed(
+                6
+              )} — Total Untransferred Earnings: ₱${totalEarned.toFixed(6)}`
+            );
+
+            const minutesSinceLastTransfer =
+              elapsedMinutes - lastTransferMinute;
+            if (minutesSinceLastTransfer >= 2) {
+              const tax = totalEarned * 0.2;
+              const netEarned = totalEarned - tax;
+              availableBalance += netEarned;
+
+              balanceDisplay.textContent = `₱${availableBalance.toFixed(2)}`;
+              addLog(
+                `>> HOURLY TRANSFER at Minute ${elapsedMinutes}: ₱${netEarned.toFixed(
+                  2
+                )} added to available balance with 20% tax (₱${tax.toFixed(
+                  2
+                )} deducted)`
+              );
+
+              totalEarned = 0;
+              lastTransferMinute = elapsedMinutes;
+            }
+          }
+
+          function msUntilNextMinute() {
+            const now = getPHTNow();
+            return (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
+          }
+
+          if (window.earningInterval) clearInterval(window.earningInterval);
+
+          addLog(
+            `Minute 0: ${getPHTNow().toLocaleString("en-PH", {
+              timeZone: "Asia/Manila",
+            })} — Initial deposit ₱${amount.toFixed(
+              2
+            )} — Interest Rate: ${interestRate.toFixed(2)}%`
+          );
+          balanceDisplay.textContent = `₱${availableBalance.toFixed(2)}`;
+
+          setTimeout(() => {
+            updateEarnings();
+            window.earningInterval = setInterval(updateEarnings, 60000);
+          }, msUntilNextMinute());
+        });
+    </script>
+  </body>
+</html>
