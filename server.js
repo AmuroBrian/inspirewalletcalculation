@@ -7,6 +7,7 @@ const path = require("path");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 
 /* ─────────────────────────────
    1.  MIDDLEWARE
@@ -183,3 +184,7 @@ app.post("/generate-dates", (req, res) => {
 // app.listen(PORT, () =>
 //   console.log(`➜  Server running  →  http://localhost:${PORT}`)
 // );
+
+app.listen(PORT, () => {
+  console.log(`➜  Server running  →  ${BASE_URL}`);
+});
