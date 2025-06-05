@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>10-Minute Compound Interest</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .title {
+            color: #d32f2f;
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        .subtitle {
+            color: #666;
+            font-size: 16px;
+        }
+        .input-container {
+            margin-bottom: 25px;
+        }
+        .label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: bold;
+        }
+        .input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d32f2f;
+            border-radius: 5px;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+        .input.disabled {
+            background-color: #f5f5f5;
+            border-color: #ccc;
+        }
+        .button-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            color: white;
+        }
+        .start-button {
+            background-color: #4CAF50;
+        }
+        .pause-button {
+            background-color: #FFC107;
+        }
+        .withdraw-button {
+            background-color: #d32f2f;
+        }
+        .early-withdraw {
+            background-color: #FF6B6B;
+        }
+        .disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .growth-container {
+            background-color: #f8f8f8;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .growth-amount {
+            font-size: 24px;
+            color: #4CAF50;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .time-display {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .time-unit {
+            text-align: center;
+        }
+        .time-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #d32f2f;
+        }
+        .time-label {
+            font-size: 12px;
+            color: #666;
+        }
+        .history-container {
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .history-header {
+            cursor: pointer;
+            padding: 10px;
+            background-color: #fff;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        .history-item {
+            background-color: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        .history-title {
+            font-weight: bold;
+            color: #d32f2f;
+        }
+        .breakdown-container {
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .breakdown-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #ddd;
+        }
+        .breakdown-row:last-child {
+            border-bottom: none;
+        }
+        .note-box {
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .note-text {
+            margin-bottom: 5px;
+            color: #666;
+        }
+        .warning-note {
+            color: #d32f2f;
+        }
+        .input-note {
+            font-size: 12px;
+            color: #666;
+            font-style: italic;
+            text-align: center;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">Year in 12 Minutes</h1>
+            <p class="subtitle">14% Annual Growth with 20% Tax</p>
+        </div>
+
+        <div class="input-container">
+            <label for="initialDeposit" class="label">Initial Deposit:</label>
+            <input type="number" id="initialDeposit" class="input" placeholder="Enter amount" min="0" step="0.01">
+            <div id="inputNote" class="input-note" style="display: none">
+                ℹ️ Initial deposit locked until withdrawal
+            </div>
+        </div>
+
+        <div class="growth-container">
+            <div class="label">Total Accumulated Growth:</div>
+            <div id="totalGrowth" class="growth-amount">₱0.00</div>
+        </div>
+
+        <div class="time-display">
+            <div class="time-unit">
+                <div id="yearValue" class="time-value">0</div>
+                <div class="time-label">Year</div>
+            </div>
+            <div class="time-unit">
+                <div id="monthValue" class="time-value">0</div>
+                <div class="time-label">Month</div>
+            </div>
+            <div class="time-unit">
+                <div id="dayValue" class="time-value">0</div>
+                <div class="time-label">Day</div>
+            </div>
+            <div class="time-unit">
+                <div id="hourValue" class="time-value">0</div>
+                <div class="time-label">Hour</div>
+            </div>
+            <div class="time-unit">
+                <div id="minuteValue" class="time-value">0</div>
+                <div class="time-label">Min</div>
+            </div>
+        </div>
+
+        <div class="breakdown-container">
+            <div class="breakdown-row">
+                <span>Total Growth:</span>
+                <span id="growthAmount" style="color: green">₱0.00</span>
+            </div>
+            <div class="breakdown-row">
+                <span>Tax Amount (20%):</span>
+                <span id="taxAmount" style="color: #d32f2f">-₱0.00</span>
+            </div>
+            <div class="breakdown-row">
+                <span>Net Growth After Tax:</span>
+                <span id="netGrowth" style="color: #d32f2f">₱0.00</span>
+            </div>
+            <div class="breakdown-row" style="border-top: 2px solid #ddd; margin-top: 10px; padding-top: 10px;">
+                <span><strong>Overall Total Tax:</strong></span>
+                <span id="overallTaxAmount" style="color: #d32f2f; font-weight: bold">-₱0.00</span>
+            </div>
+            <div class="breakdown-row">
+                <span><strong>Overall Total Money:</strong></span>
+                <span id="overallTotalMoney" style="color: green; font-weight: bold">₱0.00</span>
+            </div>
+        </div>
+
+        <div class="button-container">
+            <button id="startButton" class="button start-button">Start</button>
+            <button id="withdrawButton" class="button withdraw-button">Withdraw</button>
+        </div>
+
+        <div id="historyContainer" class="history-container" style="display: none">
+            <div id="historyHeader" class="history-header">
+                <div class="history-title">Reinvestment History ▼</div>
+            </div>
+            <div id="historyContent"></div>
+        </div>
+
+        <div class="note-box">
+            <p class="note-text">• Each 12-minute cycle = 1 year of growth</p>
+            <p class="note-text">• Auto-reinvests to start next year</p>
+            <p class="note-text">• 20% tax applied to growth</p>
+            <p class="note-text warning-note">• Safe withdrawals at every 6 and 12 months</p>
+            <p class="note-text warning-note">• First minute of each new year is also safe (after year 1)</p>
+            <p class="note-text warning-note">• Other withdrawals will forfeit growth</p>
+        </div>
+    </div>
+
+    <script>
+        // Constants
+        const ANNUAL_RATE = 0.14; // 14% annual growth
+        const TOTAL_SECONDS = 720; // 12 minutes
+        const TAX_RATE = 0.20; // 20% tax
+
+        // State variables
+        let initialDeposit = 0;
+        let currentValue = 0;
+        let timeElapsed = { minutes: 0, seconds: 0 };
+        let running = false;
+        let totalGrowth = 0;
+        let reinvestmentHistory = [];
+        let cycleCount = 0;
+        let yearCount = 0;
+        let timer = null;
+
+        // Format money with peso sign and commas
+        function formatMoney(amount) {
+            return '₱' + amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        }
+
+        // Calculate time equivalent
+        function calculateTimeEquivalent(minutes, seconds) {
+            return {
+                year: Math.floor(minutes / 12),
+                month: minutes % 12,
+                day: Math.floor(seconds / 5),
+                hour: Math.floor((seconds % 5) * 4.8),
+                minute: Math.floor(((seconds % 5) * 4.8 % 1) * 60)
+            };
+        }
+
+        // Calculate growth and values
+        function calculateValues(initialAmount, elapsedMinutes, elapsedSeconds) {
+            const totalElapsedSeconds = (elapsedMinutes * 60) + elapsedSeconds;
+            const targetGrowth = initialAmount * ANNUAL_RATE;
+            const totalGrowth = targetGrowth * (totalElapsedSeconds / TOTAL_SECONDS);
+            const currentValue = initialAmount + totalGrowth;
+            const potentialTaxAmount = totalGrowth * TAX_RATE; // Tax amount if withdrawn now
+            const potentialNetGrowth = totalGrowth * (1 - TAX_RATE); // Net growth if withdrawn now
+
+            return {
+                currentValue,
+                totalGrowth,
+                potentialTaxAmount,
+                potentialNetGrowth,
+                time: calculateTimeEquivalent(elapsedMinutes, elapsedSeconds)
+            };
+        }
+
+        // Check if current time is a valid withdrawal period
+        function isValidWithdrawalTime() {
+            const totalMinutes = timeElapsed.minutes;
+            if (totalMinutes === 0) return false;
+            return totalMinutes % 6 === 0 || (totalMinutes % 6 === 1 && timeElapsed.seconds === 0);
+        }
+
+        // Handle withdrawal
+        function handleWithdrawal() {
+            const canWithdraw = isValidWithdrawalTime();
+            const currentGrowth = currentValue - initialDeposit;
+            const taxAmount = canWithdraw ? (currentGrowth * TAX_RATE) : currentGrowth;
+            const finalWithdrawAmount = canWithdraw ? 
+                (initialDeposit + currentGrowth * (1 - TAX_RATE)) : 
+                initialDeposit;
+
+            const message = canWithdraw 
+                ? `Are you sure you want to withdraw?\n\nCurrent Value: ${formatMoney(currentValue)}\nTax Amount: ${formatMoney(taxAmount)}\nFinal Withdrawal: ${formatMoney(finalWithdrawAmount)}`
+                : yearCount === 0 && timeElapsed.minutes === 0
+                    ? "WARNING: No growth available yet."
+                    : "WARNING: Early withdrawal will forfeit ALL growth. Continue?";
+
+            if (confirm(message)) {
+                if (!canWithdraw) {
+                    currentValue = initialDeposit;
+                }
+                timeElapsed = { minutes: 0, seconds: 0 };
+                totalGrowth = 0;
+                running = false;
+                reinvestmentHistory = [];
+                cycleCount = 0;
+                yearCount = 0;
+                clearInterval(timer);
+                updateDisplay();
+                document.getElementById('startButton').textContent = 'Start';
+                document.getElementById('initialDeposit').disabled = false;
+                document.getElementById('inputNote').style.display = 'none';
+            }
+        }
+
+        // Handle reinvestment
+        function handleReinvestment() {
+            const growth = currentValue - initialDeposit;
+            reinvestmentHistory.push({
+                cycle: cycleCount + 1,
+                year: yearCount + 1,
+                previousAmount: initialDeposit,
+                newAmount: currentValue,
+                growth: growth,
+                potentialTax: growth * TAX_RATE
+            });
+            
+            // Reinvest the full amount without tax deduction
+            initialDeposit = currentValue;
+            totalGrowth = 0;
+            cycleCount++;
+            yearCount++;
+            updateHistory();
+        }
+
+        // Update history display
+        function updateHistory() {
+            const historyContainer = document.getElementById('historyContainer');
+            const historyContent = document.getElementById('historyContent');
+            
+            if (reinvestmentHistory.length > 0) {
+                historyContainer.style.display = 'block';
+                historyContent.innerHTML = reinvestmentHistory.map(item => `
+                    <div class="history-item">
+                        <strong>Year ${item.year}</strong><br>
+                        Previous: ${formatMoney(item.previousAmount)}<br>
+                        Growth: +${formatMoney(item.growth)}<br>
+                        New Amount: ${formatMoney(item.newAmount)}<br>
+                        <span style="color: #666; font-size: 0.9em;">
+                            (Tax if withdrawn: ${formatMoney(item.potentialTax)})
+                        </span>
+                    </div>
+                `).join('');
+            } else {
+                historyContainer.style.display = 'none';
+            }
+        }
+
+        // Update display
+        function updateDisplay() {
+            const data = calculateValues(initialDeposit, timeElapsed.minutes, timeElapsed.seconds);
+            
+            // Update total growth display (pre-tax)
+            document.getElementById('totalGrowth').textContent = formatMoney(
+                reinvestmentHistory.reduce((sum, item) => sum + item.growth, 0) + 
+                (data.currentValue - initialDeposit)
+            );
+
+            currentValue = data.currentValue;
+            totalGrowth = data.totalGrowth;
+
+            // Update time display
+            const time = data.time;
+            document.getElementById('yearValue').textContent = time.year;
+            document.getElementById('monthValue').textContent = time.month;
+            document.getElementById('dayValue').textContent = time.day;
+            document.getElementById('hourValue').textContent = time.hour;
+            document.getElementById('minuteValue').textContent = time.minute;
+
+            // Update breakdown
+            document.getElementById('growthAmount').textContent = formatMoney(data.totalGrowth);
+            document.getElementById('taxAmount').textContent = '-' + formatMoney(data.potentialTaxAmount);
+            document.getElementById('netGrowth').textContent = formatMoney(data.potentialNetGrowth);
+
+            // Calculate and update overall totals
+            const historicalGrowth = reinvestmentHistory.reduce((sum, item) => sum + item.growth, 0);
+            const currentGrowth = data.totalGrowth;
+            const totalPotentialTax = (historicalGrowth + currentGrowth) * TAX_RATE;
+            const overallTotal = initialDeposit + historicalGrowth + currentGrowth;
+
+            document.getElementById('overallTaxAmount').textContent = '-' + formatMoney(totalPotentialTax);
+            document.getElementById('overallTotalMoney').textContent = formatMoney(overallTotal);
+
+            // Update withdraw button
+            document.getElementById('withdrawButton').className = 
+                `button ${isValidWithdrawalTime() ? 'withdraw-button' : 'early-withdraw'}`;
+        }
+
+        // Event Listeners
+        document.getElementById('startButton').addEventListener('click', () => {
+            const depositInput = document.getElementById('initialDeposit');
+            const depositAmount = parseFloat(depositInput.value);
+
+            if (!running) {
+                if (!depositAmount || depositAmount <= 0) {
+                    alert('Please enter a valid initial deposit amount');
+                    return;
+                }
+
+                if (confirm(`Are you sure you want to start with initial deposit of: ${formatMoney(depositAmount)}?`)) {
+                    initialDeposit = depositAmount;
+                    currentValue = depositAmount;
+                    running = true;
+                    depositInput.disabled = true;
+                    document.getElementById('inputNote').style.display = 'block';
+                    document.getElementById('startButton').textContent = 'Pause';
+
+                    timer = setInterval(() => {
+                        timeElapsed.seconds++;
+                        if (timeElapsed.seconds >= 60) {
+                            timeElapsed.minutes++;
+                            timeElapsed.seconds = 0;
+                        }
+
+                        if (timeElapsed.minutes > 0 && timeElapsed.minutes % 12 === 0 && timeElapsed.seconds === 0) {
+                            handleReinvestment();
+                        }
+
+                        updateDisplay();
+                    }, 1000);
+                }
+            } else {
+                running = false;
+                clearInterval(timer);
+                document.getElementById('startButton').textContent = 'Start';
+            }
+        });
+
+        document.getElementById('withdrawButton').addEventListener('click', handleWithdrawal);
+
+        document.getElementById('historyHeader').addEventListener('click', () => {
+            const content = document.getElementById('historyContent');
+            const header = document.getElementById('historyHeader');
+            const isExpanded = content.style.display !== 'none';
+            content.style.display = isExpanded ? 'none' : 'block';
+            header.querySelector('.history-title').textContent = 
+                `Reinvestment History ${isExpanded ? '▼' : '▲'}`;
+        });
+
+        // Initial display update
+        updateDisplay();
+    </script>
+</body>
+</html>

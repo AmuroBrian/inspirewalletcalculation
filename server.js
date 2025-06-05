@@ -42,7 +42,7 @@ const rates = JSON.parse(
    4.  HELPERS
    ──────────────────────────── */
 
-// Linear interpolation within the “twoYears” tier table
+// Linear interpolation within the "twoYears" tier table
 function getInterpolatedRate(amount) {
   const table = rates.twoYears;
   if (!table) return null;
@@ -67,7 +67,7 @@ function getInterpolatedRate(amount) {
   return null; // should never happen
 }
 
-// For timestamp → “5/29/2025, 4:23:01 PM” in Philippine Time
+// For timestamp → "5/29/2025, 4:23:01 PM" in Philippine Time
 function formatPHT(dateMs) {
   return new Date(dateMs).toLocaleString("en-PH", { timeZone: "Asia/Manila" });
 }
@@ -103,8 +103,8 @@ app.post("/generate-dates", (req, res) => {
         .status(400)
         .json({ error: "Deposit amount cannot exceed current money." });
 
-    // Use the supplied date (at midnight) plus "now"’s hh:mm:ss as the deposit moment.
-    // If no startDate provided, just take “now” in PHT.
+    // Use the supplied date (at midnight) plus "now"'s hh:mm:ss as the deposit moment.
+    // If no startDate provided, just take "now" in PHT.
     const now = new Date();
     const phtOptions = {
       timeZone: "Asia/Manila",
@@ -179,12 +179,93 @@ app.post("/generate-dates", (req, res) => {
 });
 
 /* ─────────────────────────────
-   6.  START SERVER
+   6.  TEN MINUTE COMPOUND ENDPOINTS
    ──────────────────────────── */
-// app.listen(PORT, () =>
-//   console.log(`➜  Server running  →  http://localhost:${PORT}`)
-// );
 
+// Constants for ten minute compound
+const TEN_MIN_CONSTANTS = {
+  ANNUAL_RATE: 0.14, // 14% annual
+  TOTAL_SECONDS: 720, // 12 minutes = 720 seconds
+  TAX_RATE: 0.20, // 20% tax on profits
+};
+
+app.post("/ten-minute-compound/start", (req, res) => {
+  try {
+    const { initialDeposit } = req.body;
+
+    if (!initialDeposit || initialDeposit <= 0) {
+      return res.status(400).json({
+        error: "Please provide a valid initial deposit amount greater than 0"
+      });
+    }
+
+    // Calculate initial values
+    const targetGrowth = initialDeposit * TEN_MIN_CONSTANTS.ANNUAL_RATE;
+    const growthPerSecond = targetGrowth / TEN_MIN_CONSTANTS.TOTAL_SECONDS;
+    const netGrowthPerSecond = growthPerSecond * (1 - TEN_MIN_CONSTANTS.TAX_RATE);
+
+    res.json({
+      success: true,
+      initialDeposit,
+      targetGrowth,
+      growthPerSecond,
+      netGrowthPerSecond,
+      constants: TEN_MIN_CONSTANTS
+    });
+  } catch (err) {
+    console.error("[POST /ten-minute-compound/start]", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.post("/ten-minute-compound/calculate", (req, res) => {
+  try {
+    const { 
+      initialDeposit,
+      elapsedMinutes,
+      elapsedSeconds
+    } = req.body;
+
+    if (!initialDeposit || !elapsedMinutes || elapsedSeconds === undefined) {
+      return res.status(400).json({
+        error: "Please provide initialDeposit, elapsedMinutes, and elapsedSeconds"
+      });
+    }
+
+    // Calculate current value and growth
+    const totalElapsedSeconds = (elapsedMinutes * 60) + elapsedSeconds;
+    const targetGrowth = initialDeposit * TEN_MIN_CONSTANTS.ANNUAL_RATE;
+    const growthPerSecond = targetGrowth / TEN_MIN_CONSTANTS.TOTAL_SECONDS;
+    // const totalGrowth = targetGrowth * (totalElapsedSeconds / TEN_MIN_CONSTANTS.TOTAL_SECONDS);
+    const totalGrowth =  growthPerSecond * totalElapsedSeconds;
+    const currentValue = initialDeposit + (totalGrowth * (1 - TEN_MIN_CONSTANTS.TAX_RATE));
+
+    // Calculate time equivalent
+    const time = {
+      year: Math.floor(elapsedMinutes / 12),
+      month: elapsedMinutes % 12,
+      day: Math.floor(elapsedSeconds / 5),
+      hour: Math.floor((elapsedSeconds % 5) * 4.8),
+      minute: Math.floor(((elapsedSeconds % 5) * 4.8 % 1) * 60)
+    };
+
+    res.json({
+      success: true,
+      currentValue,
+      totalGrowth,
+      taxAmount: totalGrowth * TEN_MIN_CONSTANTS.TAX_RATE,
+      netGrowth: totalGrowth * (1 - TEN_MIN_CONSTANTS.TAX_RATE),
+      time
+    });
+  } catch (err) {
+    console.error("[POST /ten-minute-compound/calculate]", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/* ─────────────────────────────
+   7.  START SERVER
+   ──────────────────────────── */
 app.listen(PORT, () => {
   console.log(`➜  Server running  →  ${BASE_URL}`);
 });
